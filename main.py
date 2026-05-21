@@ -12,11 +12,11 @@ import win32com.client
 import pythoncom  
 import customtkinter as ctk  
 
-# ==================== ĐỒNG BỘ VERSION CHUẨN (KHÔNG ĐỂ LỆCH) ====================
-CURRENT_VERSION = "4.1"  # Đảm bảo số này khớp chính xác với số trên version.json của GitHub
+# ==================== ĐỒNG BỘ VERSION CHUẨN ====================
+CURRENT_VERSION = "4.1"  
 VERSION_URL = "https://raw.githubusercontent.com/hanhhello2002a/tool_parport/refs/heads/main/version.json"
 RAW_REPO_URL = "https://raw.githubusercontent.com/hanhhello2002a/tool_parport/refs/heads/main/"
-# ===============================================================================
+# ===============================================================
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
@@ -60,19 +60,14 @@ class PassportToolGUI(ctk.CTk):
         self.remote_config_data = {} 
         self.after(200, self.check_for_updates)
 
-    # 🟢 SỬA LẠI: ÉP XÓA CACHE INTERNET TUYỆT ĐỐI KHI CHECK VERSION 🟢
     def check_for_updates(self):
         def async_check():
             try:
-                # Tạo chuỗi random siêu dài để đánh lừa mọi hệ thống cache mạng
                 bypass_url = f"{VERSION_URL}?nocache={random.randint(1000000, 9999999)}"
                 req = urllib.request.Request(bypass_url)
-                
-                # Bổ sung các Header ép buộc Header không lưu đệm file cũ
-                req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+                req.add_header('User-Agent', 'Mozilla/5.0')
                 req.add_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 req.add_header('Pragma', 'no-cache')
-                req.add_header('Expires', '0')
                 
                 with urllib.request.urlopen(req, timeout=7) as response:
                     self.remote_config_data = json.loads(response.read().decode('utf-8'))
@@ -80,7 +75,6 @@ class PassportToolGUI(ctk.CTk):
                 remote_version = str(self.remote_config_data.get("version", CURRENT_VERSION)).strip()
                 local_version = str(CURRENT_VERSION).strip()
                 
-                # Chỉ hiện bảng update nếu bản trên mạng thực sự lớn hơn bản ở máy
                 if float(remote_version) > float(local_version):
                     self.show_update_overlay(remote_version)
             except:
@@ -91,34 +85,51 @@ class PassportToolGUI(ctk.CTk):
         self.tab_view.pack_forget() 
         self.overlay = ctk.CTkFrame(self, fg_color="#0a0a0a")
         self.overlay.pack(fill="both", expand=True)
-        lbl_title = ctk.CTkLabel(self.overlay, text="🚨 CẬP NHẬT BẮT BUỘC: PHÔI PSD & CẤU HÌNH MỚI", font=("Consolas", 15, "bold"), text_color="#ef4444")
+        lbl_title = ctk.CTkLabel(self.overlay, text="🚨 CẬP NHẬT BẮT BUỘC: TOÀN BỘ CODE MAIN & PHÔI PSD MỚI", font=("Consolas", 15, "bold"), text_color="#ef4444")
         lbl_title.pack(pady=(220, 10))
-        lbl_info = ctk.CTkLabel(self.overlay, text=f"Hệ thống yêu cầu đồng bộ cấu hình sang bản: v{new_version}\nTool sẽ tự động giải phóng Photoshop, tải Phôi Thiết Kế và ghi đè chuỗi MA2 mặc định mới.", font=("Consolas", 12), text_color="#a3a3a3")
+        lbl_info = ctk.CTkLabel(self.overlay, text=f"Hệ thống phát hiện bản v{new_version}.\nTool sẽ tự động tải đè file main.py mới, file phôi design.psd và đồng bộ lại cấu hình.", font=("Consolas", 12), text_color="#a3a3a3")
         lbl_info.pack(pady=10)
-        self.progress_lbl = ctk.CTkLabel(self.overlay, text="Trạng thái: Sẵn sàng đồng bộ...", font=("Consolas", 12, "italic"), text_color="#eab308")
+        self.progress_lbl = ctk.CTkLabel(self.overlay, text="Trạng thái: Sẵn sàng nâng cấp...", font=("Consolas", 12, "italic"), text_color="#eab308")
         self.progress_lbl.pack(pady=5)
-        self.btn_update = ctk.CTkButton(self.overlay, text="📥 ĐỒNG BỘ PHÔI & CONFIG NGAY", font=("Consolas", 14, "bold"), height=45, fg_color="#22c55e", hover_color="#16a34a", text_color="#000000", command=lambda: threading.Thread(target=self.execute_resource_update).start())
+        self.btn_update = ctk.CTkButton(self.overlay, text="📥 NÂNG CẤP TOÀN DIỆN NGAY", font=("Consolas", 14, "bold"), height=45, fg_color="#22c55e", hover_color="#16a34a", text_color="#000000", command=lambda: threading.Thread(target=self.execute_resource_update).start())
         self.btn_update.pack(pady=20, ipadx=20)
 
+    # 🟢 TÍNH NĂNG MỚI: TỰ ĐỘNG TẢI ĐỀ FILE MAIN.PY KHI CẬP NHẬT 🟢
     def execute_resource_update(self):
-        self.btn_update.configure(state="disabled", text="ĐANG ĐỒNG BỘ...")
+        self.btn_update.configure(state="disabled", text="ĐANG NÂNG CẤP...")
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.progress_lbl.configure(text="⏳ Đang đóng ứng dụng Photoshop ngầm để mở khóa file...", text_color="#eab308")
+            main_script_path = os.path.abspath(sys.argv[0]) # Xác định vị trí file main.py đang chạy
+            
+            # 1. Đóng photoshop chống kẹt file phôi
+            self.progress_lbl.configure(text="⏳ Đang đóng ứng dụng Photoshop ngầm...", text_color="#eab308")
             os.system("taskkill /f /im Photoshop.exe >nul 2>&1")
             
-            self.progress_lbl.configure(text="⏳ Đang tải phôi thiết kế design.psd mới từ Server...", text_color="#06b6d4")
+            # 2. Tải đè file main.py mới từ GitHub
+            self.progress_lbl.configure(text="⏳ Đang tiến hành tải đè file CODE main.py mới...", text_color="#38bdf8")
+            main_url = f"{RAW_REPO_URL}main.py?nocache={random.randint(100000, 999999)}"
+            req_main = urllib.request.Request(main_url)
+            req_main.add_header('User-Agent', 'Mozilla/5.0')
+            req_main.add_header('Cache-Control', 'no-cache')
+            with urllib.request.urlopen(req_main) as response:
+                new_code = response.read()
+                # Ghi đè trực tiếp vào file đang chạy
+                with open(main_script_path, "wb") as f:
+                    f.write(new_code)
+
+            # 3. Tải đè file phôi thiết kế design.psd
+            self.progress_lbl.configure(text="⏳ Đang tải phôi thiết kế design.psd mới...", text_color="#06b6d4")
             psd_url = f"{RAW_REPO_URL}design.psd?nocache={random.randint(100000, 999999)}"
             target_psd_path = os.path.join(current_dir, "design.psd")
-            
-            req = urllib.request.Request(psd_url)
-            req.add_header('User-Agent', 'Mozilla/5.0')
-            req.add_header('Cache-Control', 'no-cache')
-            with urllib.request.urlopen(req) as response:
+            req_psd = urllib.request.Request(psd_url)
+            req_psd.add_header('User-Agent', 'Mozilla/5.0')
+            req_psd.add_header('Cache-Control', 'no-cache')
+            with urllib.request.urlopen(req_psd) as response:
                 with open(target_psd_path, "wb") as f:
                     f.write(response.read())
                     
-            self.progress_lbl.configure(text="⚙️ Đang đồng bộ cấu hình chuỗi MA2 mặc định mới...", text_color="#06b6d4")
+            # 4. Cập nhật file cấu hình config.json
+            self.progress_lbl.configure(text="⚙️ Đang đồng bộ cấu hình chuỗi MA2 mặc định...", text_color="#c084fc")
             new_prefix = self.remote_config_data.get("default_prefix", "0")
             new_suffix = self.remote_config_data.get("default_suffix", "1M3503029<<<<<<<<<<<<<<04")
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -127,16 +138,17 @@ class PassportToolGUI(ctk.CTk):
                     "suffix": new_suffix,
                     "output_dir": self.output_dir_var.get().strip()
                 }, f, ensure_ascii=False, indent=4)
-            self.prefix_num_var.set(new_prefix)
-            self.suffix_var.set(new_suffix)
-            self.progress_lbl.configure(text="✅ Đồng bộ thành công!", text_color="#22c55e")
-            messagebox.showinfo("Thành công", "Đã cập nhật Phôi thiết kế PSD và cấu hình chuỗi MA2 mới thành công!\nỨng dụng sẽ tự động mở lại giao diện.")
-            self.overlay.pack_forget()
-            self.tab_view.pack(fill="both", expand=True, padx=20, pady=15)
-            self.update_status("Đã ghi đè trực tiếp file design.psd mới nhất thành công!", "#22c55e")
+                
+            self.progress_lbl.configure(text="✅ Đã tải và ghi đè toàn bộ dữ liệu thành công!", text_color="#22c55e")
+            messagebox.showinfo("Thành công", "Tool đã tự động tải đè FILE CODE main.py mới và file phôi PSD thành công!\nỨng dụng sẽ tắt đi, đại ca chỉ cần mở lại là xong bản mới nhé!")
+            
+            # Tự động tắt hẳn tool để lần sau mở lên ăn code mới ngay lập tức
+            self.destroy()
+            sys.exit()
+            
         except Exception as e:
-            messagebox.showerror("Lỗi Đồng Bộ", f"Không thể tải đè phôi thiết kế.\nChi tiết: {e}")
-            self.btn_update.configure(state="normal", text="THỬ LẠI ĐỒNG BỘ")
+            messagebox.showerror("Lỗi Nâng Cấp", f"Không thể tải đè hệ thống.\nChi tiết: {e}")
+            self.btn_update.configure(state="normal", text="THỬ LẠI NÂNG CẤP")
 
     def load_config(self):
         default_dir = os.path.dirname(os.path.abspath(__file__))
@@ -315,7 +327,7 @@ class PassportToolGUI(ctk.CTk):
     def init_tab_generate(self):
         frame_config = ctk.CTkFrame(self.tab_generate, fg_color="#141414", corner_radius=10)
         frame_config.pack(fill="x", padx=15, pady=10)
-        ctk.CTkLabel(frame_config, text="⚙️ CẤU HÌNH CONFIG CHUỖI MA2 (MẶC ĐỊNH LƯU)", font=("Consolas", 12, "bold"), text_color="#22c55e").grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=8)
+        ctk.CTkLabel(frame_config, text="⚙️ CẤU HÌNH CONFIG CHUỖI MA2 (MẶC ĐỀNH LƯU)", font=("Consolas", 12, "bold"), text_color="#22c55e").grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=8)
         ctk.CTkLabel(frame_config, text="Số trước GBR (Ký tự số):", font=("Consolas", 12)).grid(row=1, column=0, sticky="w", padx=20, pady=5)
         self.ent_prefix = ctk.CTkEntry(frame_config, textvariable=self.prefix_num_var, width=150, font=("Consolas", 12))
         self.ent_prefix.grid(row=1, column=1, sticky="w", padx=5, pady=5)
