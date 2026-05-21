@@ -21,7 +21,7 @@ class PassportToolGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("⚡ UK PASSPORT - NEXT-GEN PROTOCOL TOOL v3.7")
+        self.title("⚡ UK PASSPORT - NEXT-GEN PROTOCOL TOOL 4.1")
         self.geometry("950x800")
         
         # Đường dẫn file thiết kế
