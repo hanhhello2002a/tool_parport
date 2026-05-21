@@ -12,9 +12,12 @@ import win32com.client
 import pythoncom  
 import customtkinter as ctk  
 
-CURRENT_VERSION = "4.1"
+# ==================== ĐỒNG BỘ VERSION CHUẨN (KHÔNG ĐỂ LỆCH) ====================
+CURRENT_VERSION = "4.1"  # Đảm bảo số này khớp chính xác với số trên version.json của GitHub
 VERSION_URL = "https://raw.githubusercontent.com/hanhhello2002a/tool_parport/refs/heads/main/version.json"
 RAW_REPO_URL = "https://raw.githubusercontent.com/hanhhello2002a/tool_parport/refs/heads/main/"
+# ===============================================================================
+
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 ctk.set_appearance_mode("Dark")
@@ -55,19 +58,33 @@ class PassportToolGUI(ctk.CTk):
         self.suffix_var.trace_add("write", lambda *args: self.save_config())
         self.output_dir_var.trace_add("write", lambda *args: self.save_config())
         self.remote_config_data = {} 
-        self.after(100, self.check_for_updates)
+        self.after(200, self.check_for_updates)
 
+    # 🟢 SỬA LẠI: ÉP XÓA CACHE INTERNET TUYỆT ĐỐI KHI CHECK VERSION 🟢
     def check_for_updates(self):
         def async_check():
             try:
-                bypass_url = f"{VERSION_URL}?t={random.randint(100000, 999999)}"
-                req = urllib.request.Request(bypass_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=5) as response:
+                # Tạo chuỗi random siêu dài để đánh lừa mọi hệ thống cache mạng
+                bypass_url = f"{VERSION_URL}?nocache={random.randint(1000000, 9999999)}"
+                req = urllib.request.Request(bypass_url)
+                
+                # Bổ sung các Header ép buộc Header không lưu đệm file cũ
+                req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+                req.add_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                req.add_header('Pragma', 'no-cache')
+                req.add_header('Expires', '0')
+                
+                with urllib.request.urlopen(req, timeout=7) as response:
                     self.remote_config_data = json.loads(response.read().decode('utf-8'))
-                remote_version = self.remote_config_data.get("version", CURRENT_VERSION)
-                if float(remote_version) > float(CURRENT_VERSION):
+                
+                remote_version = str(self.remote_config_data.get("version", CURRENT_VERSION)).strip()
+                local_version = str(CURRENT_VERSION).strip()
+                
+                # Chỉ hiện bảng update nếu bản trên mạng thực sự lớn hơn bản ở máy
+                if float(remote_version) > float(local_version):
                     self.show_update_overlay(remote_version)
-            except: pass
+            except:
+                pass
         threading.Thread(target=async_check, daemon=True).start()
 
     def show_update_overlay(self, new_version):
@@ -89,13 +106,18 @@ class PassportToolGUI(ctk.CTk):
             current_dir = os.path.dirname(os.path.abspath(__file__))
             self.progress_lbl.configure(text="⏳ Đang đóng ứng dụng Photoshop ngầm để mở khóa file...", text_color="#eab308")
             os.system("taskkill /f /im Photoshop.exe >nul 2>&1")
+            
             self.progress_lbl.configure(text="⏳ Đang tải phôi thiết kế design.psd mới từ Server...", text_color="#06b6d4")
-            psd_url = f"{RAW_REPO_URL}design.psd?t={random.randint(100000, 999999)}"
+            psd_url = f"{RAW_REPO_URL}design.psd?nocache={random.randint(100000, 999999)}"
             target_psd_path = os.path.join(current_dir, "design.psd")
-            req = urllib.request.Request(psd_url, headers={'User-Agent': 'Mozilla/5.0'})
+            
+            req = urllib.request.Request(psd_url)
+            req.add_header('User-Agent', 'Mozilla/5.0')
+            req.add_header('Cache-Control', 'no-cache')
             with urllib.request.urlopen(req) as response:
                 with open(target_psd_path, "wb") as f:
                     f.write(response.read())
+                    
             self.progress_lbl.configure(text="⚙️ Đang đồng bộ cấu hình chuỗi MA2 mặc định mới...", text_color="#06b6d4")
             new_prefix = self.remote_config_data.get("default_prefix", "0")
             new_suffix = self.remote_config_data.get("default_suffix", "1M3503029<<<<<<<<<<<<<<04")
@@ -361,7 +383,7 @@ class PassportToolGUI(ctk.CTk):
                 ten_part = ten.replace(" ", "<")
                 m1 = f"P<GBR{ho_part}<<{ten_part}".ljust(44, '<')[:44]
                 ntns_format = f"{str(d_val).zfill(2)} {months[m_idx]} /{months[m_idx]} {str(year_birth)[-2:]}"
-                rows.append(f'"{ho} {ten}","{ho}","{ho}","{ten}","{ten}","{pNum}","{pNum}","{ntns_format}","{ntns_format}","{m1}","{m1}","{m2}","{m2}"')
+                rows.append(f'"{ho} {ten}","{ho}","{ho}","{ten}","{ten}","{pNum}","{pNum}","{ntns_format}","{ntns_format}","{ma1}","{ma1}","{m2}","{m2}"')
             self.txt_gen_out.delete("1.0", "end")
             self.txt_gen_out.insert("1.0", "\n".join(rows))
             self.lbl_gen_status.configure(text="Đã khởi tạo xong tổ hợp dữ liệu tùy chỉnh!", text_color="#22c55e")
