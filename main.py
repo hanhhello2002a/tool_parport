@@ -85,39 +85,44 @@ class PassportToolGUI(ctk.CTk):
         self.tab_view.pack_forget() 
         self.overlay = ctk.CTkFrame(self, fg_color="#0a0a0a")
         self.overlay.pack(fill="both", expand=True)
-        lbl_title = ctk.CTkLabel(self.overlay, text="🚨 CẬP NHẬT BẮT BUỘC: TOÀN BỘ CODE MAIN & PHÔI PSD MỚI", font=("Consolas", 15, "bold"), text_color="#ef4444")
+        lbl_title = ctk.CTkLabel(self.overlay, text="🚨 CẬP NHẬT BẮT BUỘC: PHÔI PSD & PHIÊN BẢN MỚI", font=("Consolas", 15, "bold"), text_color="#ef4444")
         lbl_title.pack(pady=(220, 10))
-        lbl_info = ctk.CTkLabel(self.overlay, text=f"Hệ thống phát hiện bản v{new_version}.\nTool sẽ tự động tải đè file main.py mới, file phôi design.psd và đồng bộ lại cấu hình.", font=("Consolas", 12), text_color="#a3a3a3")
+        lbl_info = ctk.CTkLabel(self.overlay, text=f"Hệ thống phát hiện phiên bản mới: v{new_version}\nTool sẽ tự động tải ứng dụng bản mới nhất, phôi và đồng bộ lại cấu hình.", font=("Consolas", 12), text_color="#a3a3a3")
         lbl_info.pack(pady=10)
         self.progress_lbl = ctk.CTkLabel(self.overlay, text="Trạng thái: Sẵn sàng nâng cấp...", font=("Consolas", 12, "italic"), text_color="#eab308")
         self.progress_lbl.pack(pady=5)
         self.btn_update = ctk.CTkButton(self.overlay, text="📥 NÂNG CẤP TOÀN DIỆN NGAY", font=("Consolas", 14, "bold"), height=45, fg_color="#22c55e", hover_color="#16a34a", text_color="#000000", command=lambda: threading.Thread(target=self.execute_resource_update).start())
         self.btn_update.pack(pady=20, ipadx=20)
 
-    # 🟢 TÍNH NĂNG MỚI: TỰ ĐỘNG TẢI ĐỀ FILE MAIN.PY KHI CẬP NHẬT 🟢
     def execute_resource_update(self):
         self.btn_update.configure(state="disabled", text="ĐANG NÂNG CẤP...")
+        temp_file_path = ""
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            main_script_path = os.path.abspath(sys.argv[0]) # Xác định vị trí file main.py đang chạy
+            current_execute_path = os.path.abspath(sys.argv[0]) 
             
-            # 1. Đóng photoshop chống kẹt file phôi
+            # 1. Đóng photoshop chống kẹt file phôi khi đè
             self.progress_lbl.configure(text="⏳ Đang đóng ứng dụng Photoshop ngầm...", text_color="#eab308")
             os.system("taskkill /f /im Photoshop.exe >nul 2>&1")
             
-            # 2. Tải đè file main.py mới từ GitHub
-            self.progress_lbl.configure(text="⏳ Đang tiến hành tải đè file CODE main.py mới...", text_color="#38bdf8")
-            main_url = f"{RAW_REPO_URL}main.py?nocache={random.randint(100000, 999999)}"
-            req_main = urllib.request.Request(main_url)
-            req_main.add_header('User-Agent', 'Mozilla/5.0')
-            req_main.add_header('Cache-Control', 'no-cache')
-            with urllib.request.urlopen(req_main) as response:
-                new_code = response.read()
-                # Ghi đè trực tiếp vào file đang chạy
-                with open(main_script_path, "wb") as f:
-                    f.write(new_code)
+            # 2. Kiểm tra xem đang chạy file .py hay file .exe để bốc link tải phù hợp
+            if current_execute_path.endswith(".exe"):
+                self.progress_lbl.configure(text="⏳ Đang tải file ỨNG DỤNG (.exe) mới từ GitHub...", text_color="#38bdf8")
+                download_url = f"{RAW_REPO_URL}PassportTool.exe?nocache={random.randint(100000, 999999)}"
+            else:
+                self.progress_lbl.configure(text="⏳ Đang tải file CODE (.py) mới từ GitHub...", text_color="#38bdf8")
+                download_url = f"{RAW_REPO_URL}main.py?nocache={random.randint(100000, 999999)}"
 
-            # 3. Tải đè file phôi thiết kế design.psd
+            # 3. Tiến hành tải file mới về thành dạng file tạm .tmp trước
+            temp_file_path = current_execute_path + ".tmp"
+            req_file = urllib.request.Request(download_url)
+            req_file.add_header('User-Agent', 'Mozilla/5.0')
+            req_file.add_header('Cache-Control', 'no-cache')
+            with urllib.request.urlopen(req_file) as response:
+                with open(temp_file_path, "wb") as f:
+                    f.write(response.read())
+
+            # 4. Tải đè file phôi thiết kế design.psd
             self.progress_lbl.configure(text="⏳ Đang tải phôi thiết kế design.psd mới...", text_color="#06b6d4")
             psd_url = f"{RAW_REPO_URL}design.psd?nocache={random.randint(100000, 999999)}"
             target_psd_path = os.path.join(current_dir, "design.psd")
@@ -128,7 +133,7 @@ class PassportToolGUI(ctk.CTk):
                 with open(target_psd_path, "wb") as f:
                     f.write(response.read())
                     
-            # 4. Cập nhật file cấu hình config.json
+            # 5. Cập nhật file cấu hình config.json
             self.progress_lbl.configure(text="⚙️ Đang đồng bộ cấu hình chuỗi MA2 mặc định...", text_color="#c084fc")
             new_prefix = self.remote_config_data.get("default_prefix", "0")
             new_suffix = self.remote_config_data.get("default_suffix", "1M3503029<<<<<<<<<<<<<<04")
@@ -139,15 +144,21 @@ class PassportToolGUI(ctk.CTk):
                     "output_dir": self.output_dir_var.get().strip()
                 }, f, ensure_ascii=False, indent=4)
                 
-            self.progress_lbl.configure(text="✅ Đã tải và ghi đè toàn bộ dữ liệu thành công!", text_color="#22c55e")
-            messagebox.showinfo("Thành công", "Tool đã tự động tải đè FILE CODE main.py mới và file phôi PSD thành công!\nỨng dụng sẽ tắt đi, đại ca chỉ cần mở lại là xong bản mới nhé!")
+            self.progress_lbl.configure(text="✅ Đã tải thành công bản mới!", text_color="#22c55e")
+            messagebox.showinfo("Thành công", "Đã tải bản nâng cấp thành công!\nỨng dụng sẽ tự động thay thế file cũ và khởi động lại ngay bây giờ.")
             
-            # Tự động tắt hẳn tool để lần sau mở lên ăn code mới ngay lập tức
+            # 6. Kịch bản CMD ngầm: Chờ 1 giây cho Tool cũ thoát hẳn -> Chép đè file tạm lên file gốc -> Tự khởi động lại bản mới
+            cmd_kickstart = f'timeout /t 1 & move /y "{temp_file_path}" "{current_execute_path}" & start "" "{current_execute_path}"'
+            os.system(f'start /b cmd /c {cmd_kickstart}')
+            
             self.destroy()
             sys.exit()
             
         except Exception as e:
-            messagebox.showerror("Lỗi Nâng Cấp", f"Không thể tải đè hệ thống.\nChi tiết: {e}")
+            if temp_file_path and os.path.exists(temp_file_path): 
+                try: os.remove(temp_file_path)
+                except: pass
+            messagebox.showerror("Lỗi Nâng Cấp", f"Không thể nâng cấp tự động.\nChi tiết: {e}")
             self.btn_update.configure(state="normal", text="THỬ LẠI NÂNG CẤP")
 
     def load_config(self):
@@ -327,7 +338,7 @@ class PassportToolGUI(ctk.CTk):
     def init_tab_generate(self):
         frame_config = ctk.CTkFrame(self.tab_generate, fg_color="#141414", corner_radius=10)
         frame_config.pack(fill="x", padx=15, pady=10)
-        ctk.CTkLabel(frame_config, text="⚙️ CẤU HÌNH CONFIG CHUỖI MA2 (MẶC ĐỀNH LƯU)", font=("Consolas", 12, "bold"), text_color="#22c55e").grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=8)
+        ctk.CTkLabel(frame_config, text="⚙️ CẤU HÌNH CONFIG CHUỖI MA2 (MẶC ĐỊNH LƯU)", font=("Consolas", 12, "bold"), text_color="#22c55e").grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=8)
         ctk.CTkLabel(frame_config, text="Số trước GBR (Ký tự số):", font=("Consolas", 12)).grid(row=1, column=0, sticky="w", padx=20, pady=5)
         self.ent_prefix = ctk.CTkEntry(frame_config, textvariable=self.prefix_num_var, width=150, font=("Consolas", 12))
         self.ent_prefix.grid(row=1, column=1, sticky="w", padx=5, pady=5)
@@ -393,7 +404,7 @@ class PassportToolGUI(ctk.CTk):
                 m2 = f"{pNum}{mid_num}GBR{dob}{fixed_suffix}"
                 ho_part = ho.replace(" ", "<")
                 ten_part = ten.replace(" ", "<")
-                m1 = f"P<GBR{ho_part}<<{ten_part}".ljust(44, '<')[:44]
+                ma1 = f"P<GBR{ho_part}<<{ten_part}".ljust(44, '<')[:44]
                 ntns_format = f"{str(d_val).zfill(2)} {months[m_idx]} /{months[m_idx]} {str(year_birth)[-2:]}"
                 rows.append(f'"{ho} {ten}","{ho}","{ho}","{ten}","{ten}","{pNum}","{pNum}","{ntns_format}","{ntns_format}","{ma1}","{ma1}","{m2}","{m2}"')
             self.txt_gen_out.delete("1.0", "end")
