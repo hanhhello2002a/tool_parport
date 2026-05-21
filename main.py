@@ -151,8 +151,8 @@ class PassportToolGUI(ctk.CTk):
             cmd_kickstart = f'timeout /t 1 & move /y "{temp_file_path}" "{current_execute_path}" & start "" "{current_execute_path}"'
             os.system(f'start /b cmd /c {cmd_kickstart}')
             
-            self.destroy()
-            sys.exit()
+            # Điều hướng đóng an toàn thông qua main loop đồ họa để tránh sinh lỗi đỏ TclError
+            self.after(100, self._safe_close)
             
         except Exception as e:
             if temp_file_path and os.path.exists(temp_file_path): 
@@ -160,6 +160,14 @@ class PassportToolGUI(ctk.CTk):
                 except: pass
             messagebox.showerror("Lỗi Nâng Cấp", f"Không thể nâng cấp tự động.\nChi tiết: {e}")
             self.btn_update.configure(state="normal", text="THỬ LẠI NÂNG CẤP")
+
+    def _safe_close(self):
+        try:
+            self.quit()
+            self.destroy()
+        except:
+            pass
+        sys.exit(0)
 
     def load_config(self):
         default_dir = os.path.dirname(os.path.abspath(__file__))
